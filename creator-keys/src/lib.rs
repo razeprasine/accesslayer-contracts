@@ -694,6 +694,15 @@ impl CreatorKeysContract {
         Self::get_creator_fee_bps(env, creator)
     }
 
+    /// Read-only view: returns the configured protocol treasury share in basis points.
+    ///
+    /// This value is sourced from the current protocol fee configuration and is
+    /// expressed in stable basis-point units.
+    pub fn get_protocol_treasury_share_bps(env: Env) -> Result<u32, ContractError> {
+        let config = read_required_protocol_fee_config(&env)?;
+        Ok(config.protocol_bps)
+    }
+
     pub fn set_fee_config(
         env: Env,
         admin: Address,
