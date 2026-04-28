@@ -108,6 +108,11 @@ pub mod fee {
     pub fn checked_sub_i128(left: i128, right: i128) -> Option<i128> {
         left.checked_sub(right)
     }
+
+    /// Performs checked integer addition for quote math helpers.
+    pub fn checked_add_i128(left: i128, right: i128) -> Option<i128> {
+        left.checked_add(right)
+    }
 }
 
 pub mod constants {
@@ -1034,6 +1039,45 @@ mod tests {
     #[test]
     fn test_checked_sub_i128_underflow() {
         assert_eq!(fee::checked_sub_i128(i128::MIN, 1), None);
+    }
+
+    #[test]
+    fn test_checked_add_i128_success() {
+        assert_eq!(fee::checked_add_i128(100, 10), Some(110));
+    }
+
+    #[test]
+    fn test_checked_add_i128_overflow() {
+        assert_eq!(fee::checked_add_i128(i128::MAX, 1), None);
+    }
+
+    #[test]
+    fn test_checked_add_i128_zero() {
+        assert_eq!(fee::checked_add_i128(0, 0), Some(0));
+        assert_eq!(fee::checked_add_i128(100, 0), Some(100));
+        assert_eq!(fee::checked_add_i128(0, 100), Some(100));
+    }
+
+    #[test]
+    fn test_checked_add_i128_negative_values() {
+        assert_eq!(fee::checked_add_i128(-10, 20), Some(10));
+        assert_eq!(fee::checked_add_i128(10, -20), Some(-10));
+        assert_eq!(fee::checked_add_i128(-10, -10), Some(-20));
+    }
+
+    #[test]
+    fn test_checked_add_i128_boundary_values() {
+        assert_eq!(fee::checked_add_i128(i128::MAX, 0), Some(i128::MAX));
+        assert_eq!(fee::checked_add_i128(i128::MIN, 0), Some(i128::MIN));
+        assert_eq!(fee::checked_add_i128(0, i128::MAX), Some(i128::MAX));
+        assert_eq!(fee::checked_add_i128(0, i128::MIN), Some(i128::MIN));
+    }
+
+    #[test]
+    fn test_checked_add_i128_deterministic_error() {
+        // Verify that overflow always returns None, never panics
+        assert_eq!(fee::checked_add_i128(i128::MAX, i128::MAX), None);
+        assert_eq!(fee::checked_add_i128(i128::MIN, i128::MIN), None);
     }
 
     #[test]
