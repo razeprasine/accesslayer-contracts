@@ -71,6 +71,17 @@ pub mod fee {
         (creator_amount, protocol_amount)
     }
 
+    /// Safely applies a percentage-based fee to an amount.
+    ///
+    /// Returns `None` if the multiplication overflows. Rounding is performed via
+    /// floor division towards zero.
+    pub fn apply_percentage_fee(amount: i128, bps: u32) -> Option<i128> {
+        if amount <= 0 {
+            return Some(0);
+        }
+        checked_div_i128(amount.checked_mul(bps as i128)?, BPS_MAX as i128)
+    }
+
     /// Computes the fee split safely, returning `None` if multiplication or subtraction overflows.
     pub fn checked_compute_fee_split(
         total: i128,
@@ -80,8 +91,7 @@ pub mod fee {
         if total <= 0 {
             return Some((0, 0));
         }
-        let protocol_amount =
-            checked_div_i128(total.checked_mul(protocol_bps as i128)?, BPS_MAX as i128)?;
+        let protocol_amount = apply_percentage_fee(total, protocol_bps)?;
         let creator_amount = checked_sub_i128(total, protocol_amount)?;
         Some((creator_amount, protocol_amount))
     }
@@ -1083,6 +1093,35 @@ mod tests {
     fn test_checked_format_quote_response_sell_underflow_total() {
         let res = super::checked_format_quote_response(i128::MIN, 1, 0, false);
         assert_eq!(res, Err(super::ContractError::SellUnderflow));
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_success() {
+        assert_eq!(fee::apply_percentage_fee(1000, 1000), Some(100));
+        assert_eq!(fee::apply_percentage_fee(1000, 0), Some(0));
+        assert_eq!(fee::apply_percentage_fee(1000, 10000), Some(1000));
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_zero_amount() {
+        assert_eq!(fee::apply_percentage_fee(0, 1000), Some(0));
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_negative_amount() {
+        assert_eq!(fee::apply_percentage_fee(-100, 1000), Some(0));
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_rounding() {
+        // 999 * 1000 / 10000 = 99.9 -> 99
+        assert_eq!(fee::apply_percentage_fee(999, 1000), Some(99));
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_overflow() {
+        // Multiplication overflows before division
+        assert_eq!(fee::apply_percentage_fee(i128::MAX, 2), None);
     }
 }
 
