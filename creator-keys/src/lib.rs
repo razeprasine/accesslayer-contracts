@@ -1075,10 +1075,13 @@ mod tests {
         );
     }
 
-    #[test]
+   #[test]
     fn test_normalize_quote_amount_clamps_large_amount() {
         let large = super::fee::MAX_SAFE_AMOUNT + 1;
-        assert_eq!(super::normalize_quote_amount(large), Ok(Some(super::fee::MAX_SAFE_AMOUNT)));
+        assert_eq!(
+            super::normalize_quote_amount(large),
+            Ok(Some(super::fee::MAX_SAFE_AMOUNT))
+        );
     }
 
     #[test]
