@@ -191,3 +191,35 @@ fn test_register_creator_rejects_invalid_characters_in_handle() {
     let result = client.try_register_creator(&creator, &invalid_handle);
     assert_eq!(result, Err(Ok(ContractError::InvalidHandleCharacter)));
 }
+
+// ── Max-length handle boundary regression tests (#267) ──────────────
+
+#[test]
+fn test_register_creator_max_length_handle_succeeds() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let max_handle = String::from_str(&env, &"a".repeat(HANDLE_LEN_MAX as usize));
+    client.register_creator(&creator, &max_handle);
+
+    assert!(client.is_creator_registered(&creator));
+}
+
+#[test]
+fn test_register_creator_handle_one_over_max_rejected() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let over_max_handle = String::from_str(&env, &"a".repeat((HANDLE_LEN_MAX + 1) as usize));
+    let result = client.try_register_creator(&creator, &over_max_handle);
+
+    assert_eq!(result, Err(Ok(ContractError::HandleTooLong)));
+}
