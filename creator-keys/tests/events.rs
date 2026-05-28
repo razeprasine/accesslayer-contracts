@@ -73,13 +73,22 @@ fn test_register_creator_event_data_is_indexer_friendly() {
     assert_eq!(payload.handle, handle);
     assert_eq!(payload.supply, 0);
     assert_eq!(payload.holder_count, 0);
+    assert_eq!(payload.creator_bps, 0); // Default when not set in setup
+    assert_eq!(payload.protocol_bps, 0);
 }
 
 #[test]
 fn test_register_creator_event_payload_field_order_is_documented() {
     assert_eq!(
         events::REGISTER_EVENT_DATA_FIELDS,
-        ["creator", "handle", "supply", "holder_count"]
+        [
+            "creator",
+            "handle",
+            "supply",
+            "holder_count",
+            "creator_bps",
+            "protocol_bps"
+        ]
     );
 }
 
