@@ -129,3 +129,16 @@ pub fn set_stored_key_price(env: &Env, contract_id: &Address, price: i128) {
 pub fn compute_expected_buy_price(_supply: u32, base_price: i128) -> i128 {
     base_price
 }
+
+/// Computes the expected (gross) sell price for a given supply value.
+///
+/// Current bonding curve formula:
+/// price = base_price (fixed price model)
+///
+/// Mirrors [`compute_expected_buy_price`]: a sell quote's gross `price` equals the
+/// base key price regardless of supply. The seller's net payout is then
+/// `price - creator_fee - protocol_fee`, computed via the `fee` helpers, so this
+/// returns the gross figure that `get_sell_quote().price` is asserted against.
+pub fn compute_expected_sell_price(_supply: u32, base_price: i128) -> i128 {
+    base_price
+}

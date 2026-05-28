@@ -511,6 +511,18 @@ pub struct CreatorKeysContract;
 
 #[contractimpl]
 impl CreatorKeysContract {
+    /// Registers a new creator profile. This is a contract initialization
+    /// entrypoint; the contract has no single `initialize` call, so the
+    /// init-time parameter validation lives on the individual setters.
+    ///
+    /// Parameter validation:
+    /// - `creator`: must authorize the call (`require_auth`). A profile must not
+    ///   already exist for this address, otherwise
+    ///   [`ContractError::AlreadyRegistered`].
+    /// - `handle`: validated by [`validate_creator_handle`] — below the minimum
+    ///   length returns [`ContractError::HandleTooShort`], above the maximum
+    ///   returns [`ContractError::HandleTooLong`], and any disallowed byte
+    ///   returns [`ContractError::InvalidHandleCharacter`].
     pub fn register_creator(
         env: Env,
         creator: Address,
@@ -818,6 +830,15 @@ impl CreatorKeysContract {
         Ok(config.protocol_bps)
     }
 
+    /// Sets the global protocol/creator fee split. Contract initialization
+    /// entrypoint.
+    ///
+    /// Parameter validation (via [`fee::assert_valid_fee_bps`]):
+    /// - `admin`: must authorize the call (`require_auth`).
+    /// - `creator_bps` + `protocol_bps`: must sum to exactly `BPS_MAX` (10_000),
+    ///   otherwise [`ContractError::InvalidFeeConfig`].
+    /// - `protocol_bps`: must not exceed `PROTOCOL_BPS_MAX`, otherwise
+    ///   [`ContractError::ProtocolFeeExceedsCap`].
     pub fn set_fee_config(
         env: Env,
         admin: Address,
@@ -846,6 +867,12 @@ impl CreatorKeysContract {
         Ok(())
     }
 
+    /// Sets the per-key price. Contract initialization entrypoint.
+    ///
+    /// Parameter validation:
+    /// - `admin`: must authorize the call (`require_auth`).
+    /// - `price`: must be strictly positive; zero or negative returns
+    ///   [`ContractError::NotPositiveAmount`].
     pub fn set_key_price(env: Env, admin: Address, price: i128) -> Result<(), ContractError> {
         admin.require_auth();
         if price <= 0 {
