@@ -420,6 +420,27 @@ fn test_get_treasury_address_persists_across_reads() {
 }
 
 #[test]
+fn test_get_treasury_address_returns_updated_value_after_admin_update() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let treasury_old = Address::generate(&env);
+    let treasury_new = Address::generate(&env);
+
+    client.set_treasury_address(&admin, &treasury_old);
+    assert_eq!(client.get_treasury_address(), Some(treasury_old.clone()));
+
+    client.set_treasury_address(&admin, &treasury_new);
+    let result = client.get_treasury_address();
+
+    assert_eq!(result, Some(treasury_new));
+    assert_ne!(result, Some(treasury_old));
+}
+
+#[test]
 fn test_get_buy_quote_success() {
     let env = Env::default();
     env.mock_all_auths();
