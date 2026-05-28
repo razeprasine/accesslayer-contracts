@@ -535,6 +535,11 @@ impl CreatorKeysContract {
             fee_recipient: creator.clone(),
         };
 
+        let fee_config = read_protocol_fee_config(&env).unwrap_or(fee::FeeConfig {
+            creator_bps: 0,
+            protocol_bps: 0,
+        });
+
         // Persist profile before event publication so indexers reading contract state
         // after this tx observe the same registration payload that was emitted.
         env.storage().persistent().set(&key, &profile);
@@ -545,6 +550,8 @@ impl CreatorKeysContract {
                 handle: profile.handle.clone(),
                 supply: profile.supply,
                 holder_count: profile.holder_count,
+                creator_bps: fee_config.creator_bps,
+                protocol_bps: fee_config.protocol_bps,
             },
         );
 

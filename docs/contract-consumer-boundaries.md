@@ -22,7 +22,7 @@ Stable structs returned by read-only methods are part of the integration contrac
 
 ### Events
 
-State-changing entrypoints that emit events (for example `register_creator`, `buy_key`) are consumption boundaries for **indexers and analytics**: payload shape and event names are stable API for the server. Any change to event name, field order, or field meaning should be treated as a **breaking** change for indexers unless versioned (e.g. a new event name) or coordinated with consumers.
+State-changing entrypoints that emit events (for example `register_creator`, `buy_key`) are consumption boundaries for **indexers and analytics**: payload shape and event names are stable API for the server. For detailed naming conventions and topic formatting, see [contract-event-conventions.md](./contract-event-conventions.md). Any change to event name, field order, or field meaning should be treated as a **breaking** change for indexers unless versioned (e.g. a new event name) or coordinated with consumers.
 
 ### Event schema compatibility checklist
 

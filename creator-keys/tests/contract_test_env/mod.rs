@@ -93,3 +93,14 @@ pub fn set_stored_key_price(env: &Env, contract_id: &Address, price: i128) {
             .set(&constants::storage::KEY_PRICE, &price);
     });
 }
+
+/// Computes the expected buy price for a given supply value.
+///
+/// Current bonding curve formula:
+/// price = base_price (fixed price model)
+///
+/// This helper ensures that test fixtures stay aligned with the contract's
+/// pricing logic and makes magic numbers in assertions more descriptive.
+pub fn compute_expected_buy_price(_supply: u32, base_price: i128) -> i128 {
+    base_price
+}

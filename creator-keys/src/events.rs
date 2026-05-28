@@ -29,7 +29,14 @@ pub const TOPIC_CREATOR_INDEX: u32 = 1;
 pub const TOPIC_BUYER_INDEX: u32 = 2;
 
 /// Stable field order for registration event payloads.
-pub const REGISTER_EVENT_DATA_FIELDS: [&str; 4] = ["creator", "handle", "supply", "holder_count"];
+pub const REGISTER_EVENT_DATA_FIELDS: [&str; 6] = [
+    "creator",
+    "handle",
+    "supply",
+    "holder_count",
+    "creator_bps",
+    "protocol_bps",
+];
 
 /// Stable field order for buy event tuple payloads.
 pub const BUY_EVENT_DATA_FIELDS: [&str; 2] = ["supply", "payment"];
@@ -49,6 +56,8 @@ pub struct CreatorRegisteredEvent {
     pub handle: String,
     pub supply: u32,
     pub holder_count: u32,
+    pub creator_bps: u32,
+    pub protocol_bps: u32,
 }
 
 /// Shared registration event topics tuple.
