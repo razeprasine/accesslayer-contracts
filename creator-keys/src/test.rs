@@ -817,5 +817,8 @@ fn test_register_event_fee_adjacent_fields_are_zero_and_ordered_after_identity_f
     let identity_fields = &events::REGISTER_EVENT_DATA_FIELDS[..2];
     let numeric_fields = &events::REGISTER_EVENT_DATA_FIELDS[2..];
     assert_eq!(identity_fields, &["creator", "handle"]);
-    assert_eq!(numeric_fields, &["supply", "holder_count"]);
+    assert_eq!(
+        numeric_fields,
+        &["supply", "holder_count", "creator_bps", "protocol_bps"]
+    );
 }
