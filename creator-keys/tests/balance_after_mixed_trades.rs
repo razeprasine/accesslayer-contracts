@@ -16,7 +16,7 @@ use soroban_sdk::Address;
 fn test_balance_after_sequence_of_buys_and_sells() {
     let env = test_env_with_auths();
     let (client, _) = register_creator_keys(&env);
-    let admin = set_key_price_for_tests(&env, &client, 100i128);
+    let _ = set_key_price_for_tests(&env, &client, 100i128);
     let creator = register_test_creator(&env, &client, "alice");
     let buyer = Address::generate(&env);
 
