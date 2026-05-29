@@ -61,6 +61,7 @@ pub enum ContractError {
     HandleTooShort = 12,
     HandleTooLong = 13,
     InvalidHandleCharacter = 14,
+    ZeroAddress = 15,
 }
 
 pub mod fee {
@@ -427,6 +428,23 @@ fn read_protocol_fee_config(env: &Env) -> Option<fee::FeeConfig> {
     env.storage()
         .persistent()
         .get(&constants::storage::FEE_CONFIG)
+}
+
+/// Validates that an address is not the Stellar zero address.
+///
+/// The zero address (`GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF`)
+/// is the all-zero public key. Setting it as a fee recipient would silently
+/// burn all protocol fees. This helper rejects it at the point of assignment.
+fn validate_non_zero_address(env: &Env, addr: &Address) -> Result<(), ContractError> {
+    let zero_str = String::from_str(
+        env,
+        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+    );
+    let zero_addr = Address::from_string(&zero_str);
+    if *addr == zero_addr {
+        return Err(ContractError::ZeroAddress);
+    }
+    Ok(())
 }
 
 fn read_required_protocol_fee_config(env: &Env) -> Result<fee::FeeConfig, ContractError> {
@@ -970,6 +988,38 @@ impl CreatorKeysContract {
             .get(&constants::storage::PROTOCOL_FEE_RECIPIENT)
     }
 
+    /// Sets the protocol fee recipient address.
+    ///
+    /// Only callable by an authorized admin. Rejects the Stellar zero address
+    /// to prevent silent fee burning.
+    ///
+    /// Parameter validation:
+    /// - `admin`: must authorize the call (`require_auth`).
+    /// - `recipient`: must not be the Stellar zero address, otherwise
+    ///   [`ContractError::ZeroAddress`].
+    pub fn set_protocol_fee_recipient(
+        env: Env,
+        admin: Address,
+        recipient: Address,
+    ) -> Result<(), ContractError> {
+        admin.require_auth();
+        validate_non_zero_address(&env, &recipient)?;
+
+        if env
+            .storage()
+            .persistent()
+            .get::<DataKey, Address>(&constants::storage::PROTOCOL_FEE_RECIPIENT)
+            .as_ref()
+            == Some(&recipient)
+        {
+            return Ok(());
+        }
+        env.storage()
+            .persistent()
+            .set(&constants::storage::PROTOCOL_FEE_RECIPIENT, &recipient);
+        Ok(())
+    }
+
     /// Read-only view: returns whether protocol configuration has been initialized.
     ///
     /// Returns `true` once a protocol fee configuration has been stored and `false`
@@ -1407,6 +1457,88 @@ mod tests {
         assert_eq!(fee::checked_fee_sum(0, i128::MAX), Some(i128::MAX));
         // One above the boundary must overflow
         assert_eq!(fee::checked_fee_sum(i128::MAX, 1), None);
+    }
+
+    // --- BPS truncation on small amounts ---
+
+    /// Bps calculation on very small amounts produces zero due to integer division
+    /// truncation. These tests document the behavior at the lower precision boundary.
+    ///
+    /// Formula: `amount * bps / 10_000` (floor division).
+    /// When the product `amount * bps < 10_000`, the result truncates to zero.
+    #[test]
+    fn test_apply_percentage_fee_truncation_1_stroop() {
+        // 1 * 1000 / 10_000 = 0.1 → truncated to 0
+        // At 1 stroop with 10% bps, the fee is zero — value is silently lost.
+        let result = fee::apply_percentage_fee(1, 1000);
+        assert_eq!(result, Some(0), "1 stroop at 1000 bps truncates to 0");
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_truncation_10_stroops() {
+        // 10 * 1000 / 10_000 = 1.0 → exactly 1
+        // At 10 stroops with 10% bps, the fee is exactly 1.
+        let result = fee::apply_percentage_fee(10, 1000);
+        assert_eq!(result, Some(1), "10 stroops at 1000 bps yields 1");
+    }
+
+    #[test]
+    fn test_apply_percentage_fee_truncation_100_stroops() {
+        // 100 * 1000 / 10_000 = 10.0 → exactly 10
+        let result = fee::apply_percentage_fee(100, 1000);
+        assert_eq!(result, Some(10), "100 stroops at 1000 bps yields 10");
+    }
+
+    #[test]
+    fn test_fee_split_truncation_1_stroop() {
+        // 1 * 1000 / 10_000 = 0 protocol, 1 creator (remainder to creator)
+        // Truncation causes the full amount to go to creator.
+        let (creator, protocol) = fee::compute_fee_split(1, 9000, 1000);
+        assert_eq!(protocol, 0, "1 stroop: protocol fee truncated to 0");
+        assert_eq!(creator, 1, "1 stroop: creator gets full amount");
+        assert_eq!(creator + protocol, 1, "conservation holds");
+    }
+
+    #[test]
+    fn test_fee_split_truncation_10_stroops() {
+        // 10 * 1000 / 10_000 = 1 protocol, 9 creator
+        let (creator, protocol) = fee::compute_fee_split(10, 9000, 1000);
+        assert_eq!(protocol, 1, "10 stroops: protocol fee is 1");
+        assert_eq!(creator, 9, "10 stroops: creator gets 9");
+        assert_eq!(creator + protocol, 10, "conservation holds");
+    }
+
+    #[test]
+    fn test_fee_split_truncation_100_stroops() {
+        // 100 * 1000 / 10_000 = 10 protocol, 90 creator
+        let (creator, protocol) = fee::compute_fee_split(100, 9000, 1000);
+        assert_eq!(protocol, 10, "100 stroops: protocol fee is 10");
+        assert_eq!(creator, 90, "100 stroops: creator gets 90");
+        assert_eq!(creator + protocol, 100, "conservation holds");
+    }
+
+    // --- Zero address validation ---
+
+    #[test]
+    fn test_validate_non_zero_address_rejects_zero() {
+        use soroban_sdk::{Address, Env, String};
+        let env = Env::default();
+        let zero_str = String::from_str(
+            &env,
+            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+        );
+        let zero_addr = Address::from_string(&zero_str);
+        let result = super::validate_non_zero_address(&env, &zero_addr);
+        assert_eq!(result, Err(super::ContractError::ZeroAddress));
+    }
+
+    #[test]
+    fn test_validate_non_zero_address_accepts_valid() {
+        use soroban_sdk::{testutils::Address as _, Address, Env};
+        let env = Env::default();
+        let valid = Address::generate(&env);
+        let result = super::validate_non_zero_address(&env, &valid);
+        assert_eq!(result, Ok(()));
     }
 }
 

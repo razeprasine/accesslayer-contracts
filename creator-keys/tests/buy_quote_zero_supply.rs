@@ -7,7 +7,8 @@
 mod contract_test_env;
 
 use contract_test_env::{
-    register_creator_keys, register_test_creator, set_pricing_and_fees, test_env_with_auths,
+    compute_expected_protocol_fee, register_creator_keys, register_test_creator,
+    set_pricing_and_fees, test_env_with_auths,
 };
 
 /// At zero supply, buy quote returns the expected first-key price, not zero.
@@ -86,7 +87,8 @@ fn test_buy_quote_zero_supply_well_formed() {
         "creator fee should be 80% of price at zero supply"
     );
     assert_eq!(
-        quote.protocol_fee, 200,
+        quote.protocol_fee,
+        compute_expected_protocol_fee(key_price, 2000),
         "protocol fee should be 20% of price at zero supply"
     );
 }

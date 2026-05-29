@@ -176,3 +176,11 @@ impl ContractStateSnapshot {
 pub fn compute_expected_sell_price(_supply: u32, base_price: i128) -> i128 {
     base_price
 }
+
+/// Computes the expected protocol fee from a given price and bps value.
+///
+/// This helper makes fixture intent explicit and keeps tests aligned
+/// when the fee config changes.
+pub fn compute_expected_protocol_fee(price: i128, protocol_bps: u32) -> i128 {
+    (price * protocol_bps as i128) / 10_000
+}
