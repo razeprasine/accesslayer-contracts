@@ -6,8 +6,8 @@
 mod contract_test_env;
 
 use contract_test_env::{
-    register_creator_keys, register_test_creator, set_key_price_for_tests, TradeOperation,
-    compute_expected_balance_after_trades, test_env_with_auths,
+    compute_expected_balance_after_trades, register_creator_keys, register_test_creator,
+    set_key_price_for_tests, test_env_with_auths, TradeOperation,
 };
 use soroban_sdk::Address;
 
