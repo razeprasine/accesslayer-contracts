@@ -7,7 +7,7 @@
 use creator_keys::{events, CreatorKeysContract, CreatorKeysContractClient};
 use soroban_sdk::{
     testutils::{Address as _, Events},
-    Address, Env, IntoVal, String, Symbol, Val, Vec,
+    Address, Env, IntoVal, String, Symbol, Val,
 };
 
 const KEY_PRICE: i128 = 100;
