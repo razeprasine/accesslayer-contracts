@@ -3,6 +3,9 @@
 //! Compose the small functions here instead of one monolithic setup so each test
 //! can opt in only to what it needs (pricing without fees, fees, registered creators, etc.).
 //!
+//! For the minimum test categories and example structures when adding new entrypoints,
+//! see `docs/minimum-viable-test-structure.md` in the repo root.
+//!
 //! Not every integration-test binary uses every helper; this crate is compiled once per
 //! `tests/*.rs` target, so we allow dead code at module scope.
 #![allow(dead_code)]
