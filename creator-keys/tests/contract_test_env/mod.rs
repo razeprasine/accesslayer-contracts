@@ -3,6 +3,9 @@
 //! Compose the small functions here instead of one monolithic setup so each test
 //! can opt in only to what it needs (pricing without fees, fees, registered creators, etc.).
 //!
+//! For the minimum test categories and example structures when adding new entrypoints,
+//! see `docs/minimum-viable-test-structure.md` in the repo root.
+//!
 //! Not every integration-test binary uses every helper; this crate is compiled once per
 //! `tests/*.rs` target, so we allow dead code at module scope.
 #![allow(dead_code)]
@@ -191,4 +194,36 @@ pub fn compute_expected_protocol_fee(price: i128, protocol_bps: u32) -> i128 {
 /// so buy fee-recipient balance assertions stay aligned with quote math.
 pub fn compute_expected_creator_fee(price: i128, creator_bps: u32, protocol_bps: u32) -> i128 {
     creator_keys::fee::compute_fee_split(price, creator_bps, protocol_bps).0
+}
+
+/// Represents a trade operation (buy or sell) in a sequence.
+#[derive(Debug, Clone, Copy)]
+pub enum TradeOperation {
+    /// A buy operation (increases balance by 1).
+    Buy,
+    /// A sell operation (decreases balance by 1).
+    Sell,
+}
+
+/// Computes the expected key balance after a sequence of buy and sell operations.
+///
+/// Takes an initial balance and applies a sequence of trades, returning the
+/// final expected balance. Each buy increases the balance by 1, each sell
+/// decreases it by 1 (stopping at 0 if a sell would go negative).
+///
+/// This helper makes test fixtures clearer by replacing magic numbers with
+/// explicit trade sequences and reduces maintenance burden when test logic changes.
+/// Mirrors the actual contract balance tracking logic.
+pub fn compute_expected_balance_after_trades(
+    initial_balance: u32,
+    trades: &[TradeOperation],
+) -> u32 {
+    let mut balance = initial_balance as i32;
+    for trade in trades {
+        match trade {
+            TradeOperation::Buy => balance += 1,
+            TradeOperation::Sell => balance = (balance - 1).max(0),
+        }
+    }
+    balance as u32
 }

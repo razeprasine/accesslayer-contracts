@@ -212,6 +212,7 @@ pub mod constants {
         pub const TREASURY_ADDRESS: DataKey = DataKey::TreasuryAddress;
         pub const ADMIN_ADDRESS: DataKey = DataKey::AdminAddress;
         pub const PROTOCOL_FEE_RECIPIENT: DataKey = DataKey::ProtocolFeeRecipient;
+        pub const PROTOCOL_FEE_RECIPIENT_BALANCE: DataKey = DataKey::ProtocolFeeRecipientBalance;
 
         pub fn creator_fee_balance(creator: &Address) -> DataKey {
             DataKey::CreatorFeeBalance(creator.clone())
@@ -342,6 +343,7 @@ pub enum DataKey {
     TreasuryAddress,
     AdminAddress,
     ProtocolFeeRecipient,
+    ProtocolFeeRecipientBalance,
     CreatorFeeBalance(Address),
 }
 
@@ -477,6 +479,53 @@ fn validate_non_zero_address(env: &Env, addr: &Address) -> Result<(), ContractEr
 
 fn read_required_protocol_fee_config(env: &Env) -> Result<fee::FeeConfig, ContractError> {
     read_protocol_fee_config(env).ok_or(ContractError::FeeConfigNotSet)
+}
+
+fn read_protocol_fee_recipient_balance(env: &Env) -> i128 {
+    env.storage()
+        .persistent()
+        .get(&constants::storage::PROTOCOL_FEE_RECIPIENT_BALANCE)
+        .unwrap_or(0)
+}
+
+fn credit_protocol_fee_recipient_balance(env: &Env, amount: i128) -> Result<(), ContractError> {
+    if amount <= 0 {
+        return Ok(());
+    }
+    let updated = read_protocol_fee_recipient_balance(env)
+        .checked_add(amount)
+        .ok_or(ContractError::Overflow)?;
+    env.storage().persistent().set(
+        &constants::storage::PROTOCOL_FEE_RECIPIENT_BALANCE,
+        &updated,
+    );
+    Ok(())
+}
+
+fn accrue_sell_protocol_fee(env: &Env) -> Result<(), ContractError> {
+    if env
+        .storage()
+        .persistent()
+        .get::<DataKey, Address>(&constants::storage::PROTOCOL_FEE_RECIPIENT)
+        .is_none()
+    {
+        return Ok(());
+    }
+
+    let Some(price) = env
+        .storage()
+        .persistent()
+        .get(&constants::storage::KEY_PRICE)
+    else {
+        return Ok(());
+    };
+
+    if read_protocol_fee_config(env).is_none() {
+        return Ok(());
+    }
+
+    let (_, protocol_fee) = CreatorKeysContract::compute_fees_for_payment(env.clone(), price)?;
+    credit_protocol_fee_recipient_balance(env, protocol_fee)
 }
 
 /// Resolves and validates the shared inputs required by read-only quote methods.
@@ -713,6 +762,7 @@ impl CreatorKeysContract {
         // supply/holder_count invariants for subsequent reads.
         env.storage().persistent().set(&key, &profile);
         env.storage().persistent().set(&balance_key, &new_balance);
+        accrue_sell_protocol_fee(&env)?;
 
         env.events()
             .publish((events::SELL_EVENT_NAME, creator, seller), profile.supply);
@@ -1030,6 +1080,13 @@ impl CreatorKeysContract {
         env.storage()
             .persistent()
             .get(&constants::storage::PROTOCOL_FEE_RECIPIENT)
+    }
+
+    /// Read-only view: returns the accrued protocol fee balance for the configured recipient.
+    ///
+    /// Returns `0` when no protocol fees have been accrued from sell execution.
+    pub fn get_protocol_recipient_balance(env: Env) -> i128 {
+        read_protocol_fee_recipient_balance(&env)
     }
 
     /// Sets the protocol fee recipient address.
