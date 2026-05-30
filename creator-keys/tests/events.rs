@@ -101,6 +101,103 @@ fn assert_event_topic_matches(env: &Env, event: &(Address, Vec<Val>, Val), expec
     );
 }
 
+/// Builder for constructing expected CreatorRegisteredEvent payloads in tests.
+///
+/// This helper simplifies building the full expected event payload struct
+/// from named parameters, making assertions more readable and easier to
+/// update when the schema changes.
+struct CreatorRegisteredEventBuilder {
+    creator: Option<Address>,
+    handle: Option<String>,
+    supply: u32,
+    holder_count: u32,
+    creator_bps: u32,
+    protocol_bps: u32,
+}
+
+impl CreatorRegisteredEventBuilder {
+    fn new() -> Self {
+        Self {
+            creator: None,
+            handle: None,
+            supply: 0,
+            holder_count: 0,
+            creator_bps: 0,
+            protocol_bps: 0,
+        }
+    }
+
+    fn creator(mut self, creator: Address) -> Self {
+        self.creator = Some(creator);
+        self
+    }
+
+    fn handle(mut self, handle: String) -> Self {
+        self.handle = Some(handle);
+        self
+    }
+
+    fn supply(mut self, supply: u32) -> Self {
+        self.supply = supply;
+        self
+    }
+
+    fn holder_count(mut self, holder_count: u32) -> Self {
+        self.holder_count = holder_count;
+        self
+    }
+
+    fn creator_bps(mut self, creator_bps: u32) -> Self {
+        self.creator_bps = creator_bps;
+        self
+    }
+
+    fn protocol_bps(mut self, protocol_bps: u32) -> Self {
+        self.protocol_bps = protocol_bps;
+        self
+    }
+
+    fn build(self) -> events::CreatorRegisteredEvent {
+        events::CreatorRegisteredEvent {
+            creator: self.creator.expect("creator must be set"),
+            handle: self.handle.expect("handle must be set"),
+            supply: self.supply,
+            holder_count: self.holder_count,
+            creator_bps: self.creator_bps,
+            protocol_bps: self.protocol_bps,
+        }
+    }
+}
+
+/// Builder for constructing expected buy event payloads in tests.
+struct BuyEventPayloadBuilder {
+    supply: u32,
+    payment: i128,
+}
+
+impl BuyEventPayloadBuilder {
+    fn new() -> Self {
+        Self {
+            supply: 0,
+            payment: 0,
+        }
+    }
+
+    fn supply(mut self, supply: u32) -> Self {
+        self.supply = supply;
+        self
+    }
+
+    fn payment(mut self, payment: i128) -> Self {
+        self.payment = payment;
+        self
+    }
+
+    fn build(self) -> (u32, i128) {
+        (self.supply, self.payment)
+    }
+}
+
 #[test]
 fn test_register_creator_emits_event() {
     let env = Env::default();
@@ -136,12 +233,16 @@ fn test_register_creator_event_data_is_indexer_friendly() {
     let last = events.last().unwrap();
     let payload: events::CreatorRegisteredEvent = last.2.into_val(&env);
 
-    assert_eq!(payload.creator, fixture.creator);
-    assert_eq!(payload.handle, handle);
-    assert_eq!(payload.supply, 0);
-    assert_eq!(payload.holder_count, 0);
-    assert_eq!(payload.creator_bps, 0);
-    assert_eq!(payload.protocol_bps, 0);
+    let expected = CreatorRegisteredEventBuilder::new()
+        .creator(fixture.creator)
+        .handle(handle)
+        .supply(0)
+        .holder_count(0)
+        .creator_bps(0)
+        .protocol_bps(0)
+        .build();
+
+    assert_eq!(payload, expected);
 }
 
 #[test]
@@ -203,8 +304,14 @@ fn test_buy_key_event_payload_fields_are_validated_from_fixture() {
     assert_eq!(topics.event_name, events::BUY_EVENT_NAME);
     assert_eq!(topics.creator, fixture.creator);
     assert_eq!(topics.actor, buyer);
-    assert_eq!(payload.supply, 1);
-    assert_eq!(payload.payment, 150);
+
+    let expected = BuyEventPayloadBuilder::new()
+        .supply(1)
+        .payment(150)
+        .build();
+
+    assert_eq!(payload.supply, expected.0);
+    assert_eq!(payload.payment, expected.1);
 }
 
 #[test]
