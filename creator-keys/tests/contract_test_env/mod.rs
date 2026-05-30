@@ -133,6 +133,17 @@ pub fn compute_expected_buy_price(_supply: u32, base_price: i128) -> i128 {
     base_price
 }
 
+/// Number of stroops in one display unit.
+///
+/// Creator key amounts use 7 decimal places, so 10,000,000 stroops equals
+/// 1.0000000 display unit.
+pub const STROOPS_PER_DISPLAY_UNIT: i128 = 10_000_000;
+
+/// Converts a raw stroop amount into whole display units.
+pub fn stroops_to_display_units(stroops: i128) -> i128 {
+    stroops / STROOPS_PER_DISPLAY_UNIT
+}
+
 /// Snapshot of observable contract state for a (creator, holder) pair.
 ///
 /// Capture before and after a read-only call with [`capture_snapshot`], then call
