@@ -213,6 +213,7 @@ pub mod constants {
         pub const ADMIN_ADDRESS: DataKey = DataKey::AdminAddress;
         pub const PROTOCOL_FEE_RECIPIENT: DataKey = DataKey::ProtocolFeeRecipient;
         pub const PROTOCOL_FEE_RECIPIENT_BALANCE: DataKey = DataKey::ProtocolFeeRecipientBalance;
+        pub const PROTOCOL_STATE_VERSION: DataKey = DataKey::ProtocolStateVersion;
 
         pub fn creator_fee_balance(creator: &Address) -> DataKey {
             DataKey::CreatorFeeBalance(creator.clone())
@@ -317,10 +318,11 @@ pub struct QuoteResponse {
 /// Shared result type for read-only quote methods.
 pub type QuoteViewResult = Result<QuoteResponse, ContractError>;
 
-/// Stable protocol state version for read-only consumers.
+/// Initial protocol state version for read-only consumers.
 ///
-/// Bump this value only when externally consumed protocol state semantics change.
-pub const PROTOCOL_STATE_VERSION: u32 = 1;
+/// The actual version is stored in storage and incremented on config updates.
+/// This constant is only the starting value.
+pub const PROTOCOL_STATE_VERSION_INITIAL: u32 = 1;
 
 /// Decimal precision used by creator key values.
 ///
@@ -345,6 +347,7 @@ pub enum DataKey {
     ProtocolFeeRecipient,
     ProtocolFeeRecipientBalance,
     CreatorFeeBalance(Address),
+    ProtocolStateVersion,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -832,9 +835,13 @@ impl CreatorKeysContract {
     /// Read-only view: returns the protocol state version.
     ///
     /// Returns a stable scalar value for clients and indexers to detect
-    /// protocol-state schema/semantics revisions without mutating contract state.
-    pub fn get_protocol_state_version(_env: Env) -> u32 {
-        PROTOCOL_STATE_VERSION
+    /// protocol-state schema/semantics revisions. The version is stored in
+    /// storage and increments on config updates.
+    pub fn get_protocol_state_version(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&constants::storage::PROTOCOL_STATE_VERSION)
+            .unwrap_or(PROTOCOL_STATE_VERSION_INITIAL)
     }
 
     /// Read-only view: returns the decimal precision used by creator key values.
@@ -976,6 +983,20 @@ impl CreatorKeysContract {
         env.storage()
             .persistent()
             .set(&constants::storage::FEE_CONFIG, &config);
+
+        // Increment protocol state version on config update
+        let current_version = env
+            .storage()
+            .persistent()
+            .get(&constants::storage::PROTOCOL_STATE_VERSION)
+            .unwrap_or(PROTOCOL_STATE_VERSION_INITIAL);
+        let new_version = current_version
+            .checked_add(1)
+            .ok_or(ContractError::Overflow)?;
+        env.storage()
+            .persistent()
+            .set(&constants::storage::PROTOCOL_STATE_VERSION, &new_version);
+
         Ok(())
     }
 
