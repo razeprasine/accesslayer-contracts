@@ -22,6 +22,7 @@ fn test_register_creator_minimum_handle_length_success() {
     assert!(client.is_creator_registered(&creator));
     let profile = client.get_creator(&creator);
     assert_eq!(profile.handle, handle);
+    assert_eq!(profile.creator, creator);
 }
 
 #[test]
