@@ -400,3 +400,8 @@ fn test_sell_key_event_payload_tracks_zero_supply_after_last_sale() {
     assert_eq!(topics.actor, seller);
     assert_eq!(payload.supply, 0);
 }
+
+#[test]
+fn test_sell_key_event_payload_field_order_is_documented() {
+    assert_eq!(events::SELL_EVENT_DATA_FIELDS, ["supply"]);
+}
