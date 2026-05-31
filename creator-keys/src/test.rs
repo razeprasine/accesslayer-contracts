@@ -15,6 +15,7 @@ fn test_read_key_balance_returns_registered_creator_supply() {
         supply: 7,
         holder_count: 3,
         fee_recipient: creator.clone(),
+        registered_at: 0,
     };
 
     let supply = env.as_contract(&contract_id, || {

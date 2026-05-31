@@ -265,8 +265,16 @@ pub struct ProtocolFeeView {
 
 /// Stable, non-optional view of creator details.
 ///
-/// Returned by [`CreatorKeysContract::get_creator_details`] for indexer-friendly consumption.
-/// When `is_registered` is `false`, default values are returned for other fields.
+/// Returned by [`CreatorKeysContract::get_creator_details`] and
+/// [`CreatorKeysContract::get_creators_batch`] for indexer-friendly consumption.
+/// When `is_registered` is `false`, default values are returned for all other fields,
+/// including `registered_at: 0`.
+///
+/// # Field Stability
+///
+/// Fields are append-only. Do not reorder existing fields; the Soroban XDR encoder
+/// serialises struct fields in declaration order and downstream indexers rely on
+/// positional stability.
 #[derive(Clone)]
 #[contracttype]
 pub struct CreatorDetailsView {
@@ -274,6 +282,13 @@ pub struct CreatorDetailsView {
     pub handle: String,
     pub supply: u32,
     pub is_registered: bool,
+    /// Ledger sequence number at the time the creator registered.
+    ///
+    /// Set to `env.ledger().sequence()` inside [`CreatorKeysContract::register_creator`].
+    /// Returns `0` for unregistered addresses so callers never receive an `Option`.
+    /// Clients can use this field to sort a marketplace grid chronologically without
+    /// maintaining a separate off-chain index.
+    pub registered_at: u32,
 }
 /// Stable, non-optional view of a creator's fee configuration.
 ///
@@ -358,6 +373,12 @@ pub struct CreatorProfile {
     pub supply: u32,
     pub holder_count: u32,
     pub fee_recipient: Address,
+    /// Ledger sequence number captured at registration time via `env.ledger().sequence()`.
+    ///
+    /// Stored as the last field so existing serialised profiles written before this
+    /// field was added deserialise correctly — the Soroban persistent storage layer
+    /// reads structs by field index, so appending is the only safe extension pattern.
+    pub registered_at: u32,
 }
 
 /// Reads a creator profile from storage, returning `None` for unregistered creators.
@@ -643,6 +664,7 @@ impl CreatorKeysContract {
             supply: 0,
             holder_count: 0,
             fee_recipient: creator.clone(),
+            registered_at: env.ledger().sequence(),
         };
 
         let fee_config = read_protocol_fee_config(&env).unwrap_or(fee::FeeConfig {
@@ -811,7 +833,7 @@ impl CreatorKeysContract {
     ///
     /// Returns a [`CreatorDetailsView`] regardless of registration status.
     /// When the creator is not registered, `is_registered` is `false` and
-    /// default values are provided for other fields.
+    /// default values are provided for other fields, including `registered_at: 0`.
     pub fn get_creator_details(env: Env, creator: Address) -> CreatorDetailsView {
         let key = constants::storage::creator(&creator);
         match env
@@ -824,14 +846,66 @@ impl CreatorKeysContract {
                 handle: profile.handle,
                 supply: profile.supply,
                 is_registered: true,
+                registered_at: profile.registered_at,
             },
             None => CreatorDetailsView {
                 creator,
                 handle: read_none_string(&env),
                 supply: 0,
                 is_registered: false,
+                registered_at: 0,
             },
         }
+    }
+
+    /// Read-only batch view: returns [`CreatorDetailsView`] for each address in `creators`.
+    ///
+    /// Iterates the provided addresses in order and fetches each creator's profile
+    /// from persistent storage. The output `Vec` is the same length as the input and
+    /// preserves input order, so clients can zip the two slices without an extra sort.
+    ///
+    /// Unregistered addresses never cause the call to fail: they produce a default
+    /// [`CreatorDetailsView`] with `is_registered: false` and `registered_at: 0`,
+    /// matching the single-address behaviour of [`get_creator_details`].
+    ///
+    /// # Usage
+    ///
+    /// ```text
+    /// let views = client.get_creators_batch(&vec![alice, bob, unknown]);
+    /// // views[0] → alice's details (is_registered: true)
+    /// // views[1] → bob's details   (is_registered: true)
+    /// // views[2] → default view    (is_registered: false, registered_at: 0)
+    /// ```
+    pub fn get_creators_batch(
+        env: Env,
+        creators: soroban_sdk::Vec<Address>,
+    ) -> soroban_sdk::Vec<CreatorDetailsView> {
+        let mut results = soroban_sdk::Vec::new(&env);
+        for creator in creators.iter() {
+            let key = constants::storage::creator(&creator);
+            let view = match env
+                .storage()
+                .persistent()
+                .get::<DataKey, CreatorProfile>(&key)
+            {
+                Some(profile) => CreatorDetailsView {
+                    creator: profile.creator,
+                    handle: profile.handle,
+                    supply: profile.supply,
+                    is_registered: true,
+                    registered_at: profile.registered_at,
+                },
+                None => CreatorDetailsView {
+                    creator,
+                    handle: read_none_string(&env),
+                    supply: 0,
+                    is_registered: false,
+                    registered_at: 0,
+                },
+            };
+            results.push_back(view);
+        }
+        results
     }
     /// Read-only view: returns the protocol state version.
     ///

@@ -210,6 +210,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -289,6 +297,14 @@
                     {
                       "key": {
                         "symbol": "holder_count"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
                       },
                       "val": {
                         "u32": 0

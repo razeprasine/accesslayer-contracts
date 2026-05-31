@@ -26,6 +26,16 @@ pub fn set_test_timestamp(env: &Env, timestamp: u64) {
     env.ledger().set(ledger);
 }
 
+/// Sets the ledger sequence number to a deterministic value.
+///
+/// Use this in tests that assert on `registered_at` so the expected value is
+/// known at the call site rather than inferred from the default sequence.
+pub fn set_ledger_sequence(env: &Env, sequence: u32) {
+    let mut ledger = env.ledger().get();
+    ledger.sequence_number = sequence;
+    env.ledger().set(ledger);
+}
+
 /// Default [`Env`] for tests: enables mocked authorization for authed entrypoints.
 pub fn test_env_with_auths() -> Env {
     let env = Env::default();

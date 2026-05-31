@@ -1107,6 +1107,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -1189,6 +1197,14 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {
@@ -1279,6 +1295,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -1361,6 +1385,14 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {
@@ -1451,6 +1483,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -1533,6 +1573,14 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {
@@ -1623,6 +1671,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -1705,6 +1761,14 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {
@@ -1795,6 +1859,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "supply"
                       },
                       "val": {
@@ -1877,6 +1949,14 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "registered_at"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {
