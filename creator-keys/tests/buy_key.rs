@@ -5,6 +5,8 @@ mod contract_test_env;
 use contract_test_env::{
     register_creator_keys, register_test_creator, set_key_price_for_tests, set_protocol_fee_bps,
     test_env_with_auths,
+    compute_expected_buy_price, 
+    
 };
 use creator_keys::ContractError;
 use soroban_sdk::{testutils::Address as _, Address};
@@ -24,6 +26,9 @@ fn test_buy_key_unregistered_creator_fails() {
 
     let result = client.try_buy_key(&creator, &buyer, &100i128);
 
+
+    let expected_price = compute_expected_buy_price(0, base_price);
+    let result = client.try_buy_key(&creator, &buyer, &expected_price);
     assert_eq!(result, Err(Ok(ContractError::NotRegistered)));
     assert_eq!(client.get_total_key_supply(&creator), 0);
     assert_eq!(client.get_key_balance(&creator, &buyer), 0);
@@ -38,11 +43,13 @@ fn test_buy_key_unregistered_creator_fails() {
 fn test_buy_key_insufficient_payment_fails() {
     let env = test_env_with_auths();
     let (client, _) = register_creator_keys(&env);
-    set_key_price_for_tests(&env, &client, 100i128);
+    let base_price = 100i128;
+    set_key_price_for_tests(&env, &client, base_price);
     let creator = register_test_creator(&env, &client, "alice");
     let buyer = Address::generate(&env);
 
-    let result = client.try_buy_key(&creator, &buyer, &99i128);
+    let expected_price = compute_expected_buy_price(0, base_price);
+    let result = client.try_buy_key(&creator, &buyer, &(expected_price - 1));
     assert_eq!(result, Err(Ok(ContractError::InsufficientPayment)));
 }
 
@@ -50,11 +57,13 @@ fn test_buy_key_insufficient_payment_fails() {
 fn test_buy_key_sufficient_payment_succeeds() {
     let env = test_env_with_auths();
     let (client, _) = register_creator_keys(&env);
-    set_key_price_for_tests(&env, &client, 100i128);
+    let base_price = 100i128;
+    set_key_price_for_tests(&env, &client, base_price);
     let creator = register_test_creator(&env, &client, "alice");
     let buyer = Address::generate(&env);
 
-    let supply = client.buy_key(&creator, &buyer, &100i128);
+    let expected_price = compute_expected_buy_price(0, base_price);
+    let supply = client.buy_key(&creator, &buyer, &expected_price);
     assert_eq!(supply, 1);
 
     let profile = client.get_creator(&creator);
