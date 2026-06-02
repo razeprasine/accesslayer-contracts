@@ -3,7 +3,8 @@
 mod contract_test_env;
 
 use contract_test_env::{
-    register_creator_keys, register_test_creator, set_key_price_for_tests, test_env_with_auths,
+    register_creator_keys, register_test_creator, set_key_price_for_tests, set_protocol_fee_bps,
+    test_env_with_auths,
 };
 use creator_keys::ContractError;
 use soroban_sdk::{testutils::Address as _, Address};
@@ -13,10 +14,24 @@ fn test_buy_key_unregistered_creator_fails() {
     let env = test_env_with_auths();
     let (client, _) = register_creator_keys(&env);
     set_key_price_for_tests(&env, &client, 100i128);
+    set_protocol_fee_bps(&env, &client, 9000u32, 1000u32);
     let creator = Address::generate(&env);
     let buyer = Address::generate(&env);
+
+    let fee_view_before = client.get_protocol_fee_view();
+    assert_eq!(client.get_total_key_supply(&creator), 0);
+    assert_eq!(client.get_key_balance(&creator, &buyer), 0);
+
     let result = client.try_buy_key(&creator, &buyer, &100i128);
+
     assert_eq!(result, Err(Ok(ContractError::NotRegistered)));
+    assert_eq!(client.get_total_key_supply(&creator), 0);
+    assert_eq!(client.get_key_balance(&creator, &buyer), 0);
+
+    let fee_view_after = client.get_protocol_fee_view();
+    assert_eq!(fee_view_after.creator_bps, fee_view_before.creator_bps);
+    assert_eq!(fee_view_after.protocol_bps, fee_view_before.protocol_bps);
+    assert_eq!(fee_view_after.is_configured, fee_view_before.is_configured);
 }
 
 #[test]
