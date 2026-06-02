@@ -22,7 +22,7 @@ Stable structs returned by read-only methods are part of the integration contrac
 
 ### Events
 
-State-changing entrypoints that emit events (for example `register_creator`, `buy_key`) are consumption boundaries for **indexers and analytics**: payload shape and event names are stable API for the server. Any change to event name, field order, or field meaning should be treated as a **breaking** change for indexers unless versioned (e.g. a new event name) or coordinated with consumers.
+State-changing entrypoints that emit events (for example `register_creator`, `buy_key`) are consumption boundaries for **indexers and analytics**: payload shape and event names are stable API for the server. For detailed naming conventions and topic formatting, see [contract-event-conventions.md](./contract-event-conventions.md). Any change to event name, field order, or field meaning should be treated as a **breaking** change for indexers unless versioned (e.g. a new event name) or coordinated with consumers.
 
 ### Event schema compatibility checklist
 
@@ -35,6 +35,41 @@ For any event payload or event name change, contributors should follow this comp
 - Coordinate with downstream indexers before deploying any event payload change; treat event payloads as a stable public API.
 
 For storage key details tied to creator registration metadata and ownership expectations, see [Storage Key Invariants](./storage-key-invariants.md).
+
+## Event field types and Soroban encoding format
+
+Contract events carry fields encoded in Soroban XDR format. Indexers and consumers need to know the specific type mappings for each field to decode them correctly.
+
+### register event
+
+Emitted when a creator is registered via `register_creator`.
+
+**Topics:** `(Symbol, Address)`
+- Index 0: `REGISTER_EVENT_NAME` (Symbol) - Event name identifier
+- Index 1: `creator` (Address) - Creator's Stellar address (32 bytes)
+
+**Data:** `CreatorRegisteredEvent` struct
+- `creator` (Address) - Creator's Stellar address (32 bytes)
+- `handle` (String) - Creator's handle string (variable length, UTF-8 encoded)
+- `supply` (u32) - Initial key supply (32-bit unsigned integer, always 0 at registration)
+- `holder_count` (u32) - Initial holder count (32-bit unsigned integer, always 0 at registration)
+
+**Type notes:** All fields use straightforward Soroban types matching their Rust definitions. The `supply` and `holder_count` fields are zero at registration time and increment with subsequent buy/sell operations.
+
+### buy event
+
+Emitted when a key is purchased via `buy_key`.
+
+**Topics:** `(Symbol, Address, Address)`
+- Index 0: `BUY_EVENT_NAME` (Symbol) - Event name identifier
+- Index 1: `creator` (Address) - Creator's Stellar address (32 bytes)
+- Index 2: `buyer` (Address) - Buyer's Stellar address (32 bytes)
+
+**Data:** Tuple `(u32, i128)`
+- `supply` (u32) - New total supply after purchase (32-bit unsigned integer)
+- `payment` (i128) - Payment amount in stroops (128-bit signed integer)
+
+**Type notes:** The `payment` field uses `i128` (signed 128-bit integer) to represent the payment amount in stroops (the smallest unit of XLM, 1 stroop = 0.0000001 XLM). This matches Soroban's standard token amount representation. The `supply` field is a `u32` representing the total number of keys minted for the creator.
 
 ## Compatibility expectations
 
