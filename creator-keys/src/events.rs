@@ -37,6 +37,9 @@ pub const BUY_EVENT_NAME: Symbol = symbol_short!("buy");
 /// Event name for key sale.
 pub const SELL_EVENT_NAME: Symbol = symbol_short!("sell");
 
+/// Event name for creator buyback.
+pub const BUYBACK_EVENT_NAME: Symbol = symbol_short!("buyback");
+
 /// Common topic indexes for event tuple topics.
 pub const TOPIC_EVENT_NAME_INDEX: u32 = 0;
 pub const TOPIC_CREATOR_INDEX: u32 = 1;
@@ -67,6 +70,13 @@ pub const SELL_EVENT_DATA_FIELDS: [&str; 1] = ["supply"];
 /// Number of fields in the sell event data payload.
 pub const SELL_EVENT_FIELD_COUNT: usize = SELL_EVENT_DATA_FIELDS.len();
 
+/// Stable field order for buyback event payloads.
+pub const BUYBACK_EVENT_DATA_FIELDS: [&str; 5] =
+    ["creator", "amount", "price_paid", "new_supply", "ledger"];
+
+/// Number of fields in the buyback event data payload.
+pub const BUYBACK_EVENT_FIELD_COUNT: usize = BUYBACK_EVENT_DATA_FIELDS.len();
+
 /// Stable registration event payload for downstream indexers.
 ///
 /// Event shape:
@@ -91,7 +101,27 @@ pub fn register_event_topics(creator: &Address) -> (Symbol, Address) {
     (REGISTER_EVENT_NAME, creator.clone())
 }
 
+/// Stable buyback event payload for downstream indexers.
+///
+/// Event shape:
+/// - topics: `(BUYBACK_EVENT_NAME, creator)`
+/// - data: `KeysBoughtBackEvent`
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct KeysBoughtBackEvent {
+    pub creator: Address,
+    pub amount: u32,
+    pub price_paid: i128,
+    pub new_supply: u32,
+    pub ledger: u32,
+}
+
 /// Shared buy event topics tuple.
 pub fn buy_event_topics(creator: &Address, buyer: &Address) -> (Symbol, Address, Address) {
     (BUY_EVENT_NAME, creator.clone(), buyer.clone())
+}
+
+/// Shared buyback event topics tuple.
+pub fn buyback_event_topics(creator: &Address) -> (Symbol, Address) {
+    (BUYBACK_EVENT_NAME, creator.clone())
 }
