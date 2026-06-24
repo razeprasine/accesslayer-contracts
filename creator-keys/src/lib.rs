@@ -65,6 +65,7 @@ pub enum ContractError {
     SlippageExceeded = 16,
     ProtocolPaused = 17,
     Unauthorized = 18,
+    InvalidAmount = 19,
 }
 
 pub mod fee {
@@ -566,6 +567,13 @@ fn assert_buy_price_slippage(price: i128, max_price: Option<i128>) -> Result<(),
     Ok(())
 }
 
+fn assert_nonzero_amount(amount: u32) -> Result<(), ContractError> {
+    if amount == 0 {
+        return Err(ContractError::InvalidAmount);
+    }
+    Ok(())
+}
+
 fn compute_sell_proceeds(env: &Env, price: i128) -> Result<i128, ContractError> {
     let (creator_fee, protocol_fee) =
         CreatorKeysContract::compute_fees_for_payment(env.clone(), price)?;
@@ -872,6 +880,62 @@ impl CreatorKeysContract {
             .publish((events::SELL_EVENT_NAME, creator, seller), profile.supply);
 
         Ok(profile.supply)
+    }
+
+    pub fn transfer_keys(
+        env: Env,
+        creator: Address,
+        from: Address,
+        to: Address,
+        amount: u32,
+    ) -> Result<(), ContractError> {
+        from.require_auth();
+        assert_not_paused(&env)?;
+        assert_nonzero_amount(amount)?;
+
+        let mut profile = read_registered_creator_profile(&env, &creator)?;
+
+        let from_key = constants::storage::key_balance(&creator, &from);
+        let from_balance: u32 = env.storage().persistent().get(&from_key).unwrap_or(0);
+        if from_balance < amount {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        let to_key = constants::storage::key_balance(&creator, &to);
+        let to_balance: u32 = env.storage().persistent().get(&to_key).unwrap_or(0);
+
+        let new_from_balance = from_balance
+            .checked_sub(amount)
+            .ok_or(ContractError::SellUnderflow)?;
+        let new_to_balance = to_balance
+            .checked_add(amount)
+            .ok_or(ContractError::Overflow)?;
+
+        if new_from_balance == 0 {
+            profile.holder_count = profile
+                .holder_count
+                .checked_sub(1)
+                .ok_or(ContractError::SellUnderflow)?;
+        }
+
+        if to_balance == 0 {
+            profile.holder_count = profile
+                .holder_count
+                .checked_add(1)
+                .ok_or(ContractError::Overflow)?;
+        }
+
+        let creator_key = constants::storage::creator(&creator);
+        env.storage().persistent().set(&creator_key, &profile);
+        env.storage().persistent().set(&from_key, &new_from_balance);
+        env.storage().persistent().set(&to_key, &new_to_balance);
+
+        env.events().publish(
+            (events::TRANSFER_EVENT_NAME, creator, from, to),
+            amount,
+        );
+
+        Ok(())
     }
 
     /// Halts all state-changing operations (buy, sell, register_creator).
@@ -1826,6 +1890,20 @@ mod tests {
     }
 
     // --- Zero address validation ---
+
+    #[test]
+    fn test_assert_nonzero_amount_rejects_zero() {
+        assert_eq!(
+            super::assert_nonzero_amount(0),
+            Err(super::ContractError::InvalidAmount)
+        );
+    }
+
+    #[test]
+    fn test_assert_nonzero_amount_accepts_nonzero() {
+        assert_eq!(super::assert_nonzero_amount(1), Ok(()));
+        assert_eq!(super::assert_nonzero_amount(u32::MAX), Ok(()));
+    }
 
     #[test]
     fn test_validate_non_zero_address_rejects_zero() {

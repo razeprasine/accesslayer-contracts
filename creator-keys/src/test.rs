@@ -856,6 +856,50 @@ fn test_register_event_fee_adjacent_fields_are_zero_and_ordered_after_identity_f
 /// the most recent top-level invocation only. This helper confirms that the
 /// event log for the last call is empty, typically used to verify that failed
 /// transactions did not leave side-effect artifacts in the event stream.
+#[test]
+fn test_transfer_keys_zero_amount_reverts_with_invalid_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let from = Address::generate(&env);
+    let to = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+    client.register_creator(&creator, &handle);
+
+    let balance_key = constants::storage::key_balance(&creator, &from);
+    env.as_contract(&contract_id, || {
+        env.storage().persistent().set(&balance_key, &5u32);
+    });
+
+    let result = client.try_transfer_keys(&creator, &from, &to, &0u32);
+    assert_eq!(result, Err(Ok(ContractError::InvalidAmount)));
+}
+
+#[test]
+fn test_transfer_keys_nonzero_amount_passes_guard() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let from = Address::generate(&env);
+    let to = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+    client.register_creator(&creator, &handle);
+
+    let balance_key = constants::storage::key_balance(&creator, &from);
+    env.as_contract(&contract_id, || {
+        env.storage().persistent().set(&balance_key, &5u32);
+    });
+
+    let result = client.try_transfer_keys(&creator, &from, &to, &1u32);
+    assert!(result.is_ok());
+}
+
 fn assert_no_events(env: &Env) {
     let all_events = env.events().all();
     assert_eq!(

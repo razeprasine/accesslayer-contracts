@@ -37,6 +37,9 @@ pub const BUY_EVENT_NAME: Symbol = symbol_short!("buy");
 /// Event name for key sale.
 pub const SELL_EVENT_NAME: Symbol = symbol_short!("sell");
 
+/// Event name for key transfer.
+pub const TRANSFER_EVENT_NAME: Symbol = symbol_short!("transfer");
+
 /// Common topic indexes for event tuple topics.
 pub const TOPIC_EVENT_NAME_INDEX: u32 = 0;
 pub const TOPIC_CREATOR_INDEX: u32 = 1;
