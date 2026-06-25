@@ -70,7 +70,10 @@ fn test_linear_preset_buy_quote_matches_formula_at_supply_0() {
 
     // supply = 0 (no buys yet)
     let got = client.get_buy_quote(&creator);
-    assert_eq!(got, expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -84,7 +87,10 @@ fn test_linear_preset_buy_quote_matches_formula_at_supply_1() {
     advance_supply_to(&client, &creator, &buyer, 1);
 
     let got = client.get_buy_quote(&creator);
-    assert_eq!(got, expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -98,7 +104,10 @@ fn test_linear_preset_buy_quote_matches_formula_at_supply_10() {
     advance_supply_to(&client, &creator, &buyer, 10);
 
     let got = client.get_buy_quote(&creator);
-    assert_eq!(got, expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -112,7 +121,10 @@ fn test_linear_preset_buy_quote_matches_formula_at_supply_100() {
     advance_supply_to(&client, &creator, &buyer, 100);
 
     let got = client.get_buy_quote(&creator);
-    assert_eq!(got, expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -126,7 +138,10 @@ fn test_linear_preset_buy_quote_matches_formula_at_supply_1000() {
     advance_supply_to(&client, &creator, &buyer, 1000);
 
     let got = client.get_buy_quote(&creator);
-    assert_eq!(got, expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_buy_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -140,7 +155,10 @@ fn test_linear_preset_sell_quote_matches_formula_at_supply_1() {
     advance_supply_to(&client, &creator, &buyer, 1);
 
     let got = client.get_sell_quote(&creator, &buyer);
-    assert_eq!(got, expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -154,7 +172,10 @@ fn test_linear_preset_sell_quote_matches_formula_at_supply_10() {
     advance_supply_to(&client, &creator, &buyer, 10);
 
     let got = client.get_sell_quote(&creator, &buyer);
-    assert_eq!(got, expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -168,7 +189,10 @@ fn test_linear_preset_sell_quote_matches_formula_at_supply_100() {
     advance_supply_to(&client, &creator, &buyer, 100);
 
     let got = client.get_sell_quote(&creator, &buyer);
-    assert_eq!(got, expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
 
 #[test]
@@ -182,5 +206,8 @@ fn test_linear_preset_sell_quote_matches_formula_at_supply_1000() {
     advance_supply_to(&client, &creator, &buyer, 1000);
 
     let got = client.get_sell_quote(&creator, &buyer);
-    assert_eq!(got, expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS));
+    assert_eq!(
+        got,
+        expected_sell_quote(KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS)
+    );
 }
