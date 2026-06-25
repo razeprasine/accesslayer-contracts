@@ -170,6 +170,133 @@ fn test_get_locked_allocation_returns_allocation_when_set() {
     assert!(!result.claimed);
 }
 
+// --- Transfer keys tests ---
+
+#[test]
+fn test_transfer_keys_basic() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    client.transfer_keys(&creator, &sender, &recipient, &1);
+
+    assert_eq!(client.get_key_balance(&creator, &sender), 2);
+    assert_eq!(client.get_key_balance(&creator, &recipient), 1);
+    assert_eq!(client.get_total_key_supply(&creator), 3);
+}
+
+#[test]
+fn test_transfer_keys_sender_zeroed_out() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    client.transfer_keys(&creator, &sender, &recipient, &1);
+
+    assert_eq!(client.get_key_balance(&creator, &sender), 0);
+    assert_eq!(client.get_key_balance(&creator, &recipient), 1);
+    assert_eq!(client.get_total_key_supply(&creator), 1);
+}
+
+#[test]
+fn test_transfer_keys_new_recipient() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    let supply_before = client.get_total_key_supply(&creator);
+    client.transfer_keys(&creator, &sender, &recipient, &1);
+    let supply_after = client.get_total_key_supply(&creator);
+
+    assert_eq!(supply_before, supply_after, "supply must not change");
+    assert_eq!(client.get_key_balance(&creator, &recipient), 1);
+}
+
+#[test]
+fn test_transfer_keys_self_transfer_reverts() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    let result = client.try_transfer_keys(&creator, &sender, &sender, &1);
+    assert_eq!(result, Err(Ok(ContractError::SelfTransfer)));
+}
+
+#[test]
+fn test_transfer_keys_zero_amount_reverts() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    let result = client.try_transfer_keys(&creator, &sender, &recipient, &0);
+    assert_eq!(result, Err(Ok(ContractError::ZeroTransferAmount)));
+}
+
+#[test]
+fn test_transfer_keys_insufficient_balance_reverts() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.set_key_price(&admin, &100i128);
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100i128, &None);
+
+    let result = client.try_transfer_keys(&creator, &sender, &recipient, &2);
+    assert_eq!(result, Err(Ok(ContractError::InsufficientBalance)));
+}
+
 // --- Max supply cap tests (#394) ---
 
 #[test]

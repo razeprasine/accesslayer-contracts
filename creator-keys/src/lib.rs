@@ -72,6 +72,8 @@ pub enum ContractError {
     AlreadyClaimed = 23,
     SupplyCapExceeded = 24,
     InsufficientSupply = 25,
+    SelfTransfer = 26,
+    ZeroTransferAmount = 27,
 }
 
 pub mod fee {
@@ -2082,6 +2084,114 @@ impl CreatorKeysContract {
         env.storage()
             .persistent()
             .get(&constants::storage::max_supply(&creator))
+    }
+
+    /// Transfers key ownership between wallets without touching the bonding curve.
+    ///
+    /// The sender's balance is decremented and the recipient's balance is
+    /// incremented by `amount`. Total supply is unchanged so the bonding curve
+    /// price is not affected.
+    ///
+    /// # Errors
+    ///
+    /// - [`ContractError::NotRegistered`] if the creator is not registered.
+    /// - [`ContractError::ZeroTransferAmount`] if `amount` is zero.
+    /// - [`ContractError::SelfTransfer`] if the sender is the same as the recipient.
+    /// - [`ContractError::InsufficientBalance`] if the sender holds fewer keys than `amount`.
+    pub fn transfer_keys(
+        env: Env,
+        creator: Address,
+        from: Address,
+        to: Address,
+        amount: u32,
+    ) -> Result<(), ContractError> {
+        from.require_auth();
+        assert_not_paused(&env)?;
+
+        if amount == 0 {
+            return Err(ContractError::ZeroTransferAmount);
+        }
+        if from == to {
+            return Err(ContractError::SelfTransfer);
+        }
+
+        let mut profile: CreatorProfile = read_registered_creator_profile(&env, &creator)?;
+
+        let from_balance_key = constants::storage::key_balance(&creator, &from);
+        let from_balance: u32 = env
+            .storage()
+            .persistent()
+            .get(&from_balance_key)
+            .unwrap_or(0);
+
+        // Settle dividends for sender before balance changes.
+        settle_holder_dividends(&env, &creator, &from, from_balance)?;
+
+        if from_balance < amount {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        // Settle dividends for recipient before balance changes.
+        let to_balance_key = constants::storage::key_balance(&creator, &to);
+        let to_balance: u32 = env
+            .storage()
+            .persistent()
+            .get(&to_balance_key)
+            .unwrap_or(0);
+        settle_holder_dividends(&env, &creator, &to, to_balance)?;
+
+        // Update sender balance.
+        let new_from_balance = from_balance
+            .checked_sub(amount)
+            .ok_or(ContractError::InsufficientBalance)?;
+        env.storage()
+            .persistent()
+            .set(&from_balance_key, &new_from_balance);
+
+        // Decrement holder count if sender balance reaches zero.
+        if new_from_balance == 0 {
+            profile.holder_count = profile
+                .holder_count
+                .checked_sub(1)
+                .ok_or(ContractError::Overflow)?;
+        }
+
+        // Update recipient balance.
+        let new_to_balance = to_balance
+            .checked_add(amount)
+            .ok_or(ContractError::Overflow)?;
+        env.storage()
+            .persistent()
+            .set(&to_balance_key, &new_to_balance);
+
+        // Increment holder count if recipient had zero balance before.
+        if to_balance == 0 {
+            profile.holder_count = profile
+                .holder_count
+                .checked_add(1)
+                .ok_or(ContractError::Overflow)?;
+        }
+
+        // Write updated profile (holder_count changes).
+        let profile_key = constants::storage::creator(&creator);
+        env.storage().persistent().set(&profile_key, &profile);
+
+        env.events().publish(
+            (
+                events::KEYS_TRANSFERRED_EVENT_NAME,
+                creator.clone(),
+                from.clone(),
+            ),
+            events::KeysTransferredEvent {
+                creator_id: creator,
+                from,
+                to,
+                amount,
+                ledger: env.ledger().sequence(),
+            },
+        );
+
+        Ok(())
     }
 }
 

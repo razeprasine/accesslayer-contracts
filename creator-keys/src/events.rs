@@ -213,3 +213,25 @@ pub struct CreatorFeeRecipientUpdatedEvent {
     pub old_recipient: Address,
     pub new_recipient: Address,
 }
+
+/// Event name for key transfer.
+pub const KEYS_TRANSFERRED_EVENT_NAME: Symbol = symbol_short!("xfer");
+
+/// Stable field order for key transfer event payloads.
+pub const KEYS_TRANSFERRED_DATA_FIELDS: [&str; 5] =
+    ["creator_id", "from", "to", "amount", "ledger"];
+
+/// Stable key transfer event payload for downstream indexers.
+///
+/// Event shape:
+/// - topics: `(KEYS_TRANSFERRED_EVENT_NAME, creator_id, from)`
+/// - data: `KeysTransferredEvent`
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct KeysTransferredEvent {
+    pub creator_id: Address,
+    pub from: Address,
+    pub to: Address,
+    pub amount: u32,
+    pub ledger: u32,
+}
