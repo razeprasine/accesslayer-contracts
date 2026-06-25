@@ -71,6 +71,7 @@ pub enum ContractError {
     AllocationLocked = 22,
     AlreadyClaimed = 23,
     SupplyCapExceeded = 24,
+    InsufficientSupply = 25,
 }
 
 pub mod fee {
@@ -629,6 +630,18 @@ fn assert_buy_price_slippage(price: i128, max_price: Option<i128>) -> Result<(),
     Ok(())
 }
 
+fn assert_buyback_total_cost_slippage(
+    total_cost: i128,
+    max_total_cost: Option<i128>,
+) -> Result<(), ContractError> {
+    if let Some(max) = max_total_cost {
+        if total_cost > max {
+            return Err(ContractError::SlippageExceeded);
+        }
+    }
+    Ok(())
+}
+
 fn compute_sell_proceeds(env: &Env, price: i128) -> Result<i128, ContractError> {
     let (creator_fee, protocol_fee) =
         CreatorKeysContract::compute_fees_for_payment(env.clone(), price)?;
@@ -717,6 +730,25 @@ fn normalize_quote_amount(amount: i128) -> Result<Option<i128>, ContractError> {
     }
 
     Ok(Some(amount))
+}
+
+fn validate_buyback_amount(amount: u32) -> Result<(), ContractError> {
+    if amount == 0 {
+        return Err(ContractError::NotPositiveAmount);
+    }
+
+    Ok(())
+}
+
+fn compute_buyback_base_price(unit_price: i128, amount: u32) -> Result<i128, ContractError> {
+    unit_price
+        .checked_mul(i128::from(amount))
+        .ok_or(ContractError::Overflow)
+}
+
+fn compute_buyback_protocol_fee(env: &Env, base_price: i128) -> Result<i128, ContractError> {
+    let config = read_required_protocol_fee_config(env)?;
+    fee::apply_percentage_fee(base_price, config.protocol_bps).ok_or(ContractError::Overflow)
 }
 
 fn zero_quote_response() -> QuoteResponse {
@@ -1123,6 +1155,91 @@ impl CreatorKeysContract {
 
         // Extend TTL for creator storage after successful sell
         extend_creator_ttl(&env, &creator);
+
+        Ok(profile.supply)
+    }
+
+    /// Creator-only buyback that burns keys from the creator's own held balance.
+    ///
+    /// The creator pays the current gross buyback cost plus protocol fee, while the
+    /// creator fee is waived. To preserve the contract's supply/balance invariants,
+    /// the burned amount is decremented from the creator wallet's existing key balance.
+    pub fn buyback(
+        env: Env,
+        creator: Address,
+        caller: Address,
+        amount: u32,
+        payment: i128,
+        max_total_cost: Option<i128>,
+    ) -> Result<u32, ContractError> {
+        caller.require_auth();
+        assert_not_paused(&env)?;
+
+        if caller != creator {
+            return Err(ContractError::Unauthorized);
+        }
+        if payment <= 0 {
+            return Err(ContractError::NotPositiveAmount);
+        }
+        validate_buyback_amount(amount)?;
+
+        let price: i128 = env
+            .storage()
+            .persistent()
+            .get(&constants::storage::KEY_PRICE)
+            .ok_or(ContractError::KeyPriceNotSet)?;
+        let base_price = compute_buyback_base_price(price, amount)?;
+        let protocol_fee = compute_buyback_protocol_fee(&env, base_price)?;
+        let total_cost = base_price
+            .checked_add(protocol_fee)
+            .ok_or(ContractError::Overflow)?;
+
+        assert_buyback_total_cost_slippage(total_cost, max_total_cost)?;
+        if payment < total_cost {
+            return Err(ContractError::InsufficientPayment);
+        }
+
+        let mut profile: CreatorProfile = read_registered_creator_profile(&env, &creator)?;
+        if amount > profile.supply {
+            return Err(ContractError::InsufficientSupply);
+        }
+
+        let balance_key = constants::storage::key_balance(&creator, &caller);
+        let current_balance: u32 = env.storage().persistent().get(&balance_key).unwrap_or(0);
+        if current_balance < amount {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        let new_balance = current_balance
+            .checked_sub(amount)
+            .ok_or(ContractError::SellUnderflow)?;
+        profile.supply = profile
+            .supply
+            .checked_sub(amount)
+            .ok_or(ContractError::SellUnderflow)?;
+
+        if current_balance > 0 && new_balance == 0 {
+            profile.holder_count = profile
+                .holder_count
+                .checked_sub(1)
+                .ok_or(ContractError::SellUnderflow)?;
+        }
+
+        let key = constants::storage::creator(&creator);
+        env.storage().persistent().set(&key, &profile);
+        env.storage().persistent().set(&balance_key, &new_balance);
+        credit_protocol_fee_recipient_balance(&env, protocol_fee)?;
+
+        env.events().publish(
+            events::buyback_event_topics(&creator),
+            events::KeysBoughtBackEvent {
+                creator,
+                amount,
+                price_paid: total_cost,
+                new_supply: profile.supply,
+                ledger: env.ledger().sequence(),
+            },
+        );
 
         Ok(profile.supply)
     }
@@ -1665,6 +1782,32 @@ impl CreatorKeysContract {
         };
         let (creator_fee, protocol_fee) = Self::compute_fees_for_payment(env.clone(), price)?;
         checked_format_quote_response(price, creator_fee, protocol_fee, true)
+    }
+
+    /// Read-only view: returns the total creator buyback cost for a given amount.
+    ///
+    /// The returned value is `base_price(amount) + protocol_fee(amount)` because the
+    /// creator fee is explicitly waived on buybacks.
+    pub fn get_buyback_quote(
+        env: Env,
+        creator: Address,
+        amount: u32,
+    ) -> Result<i128, ContractError> {
+        validate_buyback_amount(amount)?;
+
+        let Some(price) = resolve_quote_inputs(&env, &creator)? else {
+            return Ok(0);
+        };
+        let profile = read_registered_creator_profile(&env, &creator)?;
+        if amount > profile.supply {
+            return Err(ContractError::InsufficientSupply);
+        }
+
+        let base_price = compute_buyback_base_price(price, amount)?;
+        let protocol_fee = compute_buyback_protocol_fee(&env, base_price)?;
+        base_price
+            .checked_add(protocol_fee)
+            .ok_or(ContractError::Overflow)
     }
 
     /// Read-only view: returns a quote for selling a key.
