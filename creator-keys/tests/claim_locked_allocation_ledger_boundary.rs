@@ -87,5 +87,8 @@ fn test_claim_locked_allocation_succeeds_at_unlock_ledger() {
     assert!(stored.claimed, "allocation must be marked as claimed");
 
     let balance = client.get_key_balance(&creator, &creator);
-    assert_eq!(balance, amount, "keys must be transferred to creator balance");
+    assert_eq!(
+        balance, amount,
+        "keys must be transferred to creator balance"
+    );
 }

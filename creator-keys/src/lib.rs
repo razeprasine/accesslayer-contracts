@@ -2133,11 +2133,7 @@ impl CreatorKeysContract {
 
         // Settle dividends for recipient before balance changes.
         let to_balance_key = constants::storage::key_balance(&creator, &to);
-        let to_balance: u32 = env
-            .storage()
-            .persistent()
-            .get(&to_balance_key)
-            .unwrap_or(0);
+        let to_balance: u32 = env.storage().persistent().get(&to_balance_key).unwrap_or(0);
         settle_holder_dividends(&env, &creator, &to, to_balance)?;
 
         // Update sender balance.
