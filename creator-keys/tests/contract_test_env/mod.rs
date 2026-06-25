@@ -279,7 +279,11 @@ pub fn compute_expected_balance_after_trades(
 /// - `total_supply`: total keys in circulation at distribution time.
 ///
 /// Returns `0` when `total_supply` is zero or `holder_balance` is zero.
-pub fn proportional_dividend_share(net_amount: i128, holder_balance: u32, total_supply: u32) -> i128 {
+pub fn proportional_dividend_share(
+    net_amount: i128,
+    holder_balance: u32,
+    total_supply: u32,
+) -> i128 {
     if total_supply == 0 || holder_balance == 0 {
         return 0;
     }
