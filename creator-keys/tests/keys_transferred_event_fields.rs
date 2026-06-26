@@ -55,7 +55,10 @@ fn test_keys_transferred_event_creator_id_field() {
     let (creator, _, _) = setup_transfer(&env, &client);
 
     let payload = last_event_data(&env);
-    assert_eq!(payload.creator_id, creator, "creator_id field must match the creator address");
+    assert_eq!(
+        payload.creator_id, creator,
+        "creator_id field must match the creator address"
+    );
 }
 
 #[test]
