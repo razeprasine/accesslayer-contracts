@@ -37,6 +37,9 @@ pub const BUY_EVENT_NAME: Symbol = symbol_short!("buy");
 /// Event name for key sale.
 pub const SELL_EVENT_NAME: Symbol = symbol_short!("sell");
 
+/// Event name for peer-to-peer key transfer.
+pub const TRANSFER_EVENT_NAME: Symbol = symbol_short!("transfer");
+
 /// Event name for creator buyback.
 pub const BUYBACK_EVENT_NAME: Symbol = symbol_short!("buyback");
 
@@ -119,6 +122,11 @@ pub struct KeysBoughtBackEvent {
 /// Shared buy event topics tuple.
 pub fn buy_event_topics(creator: &Address, buyer: &Address) -> (Symbol, Address, Address) {
     (BUY_EVENT_NAME, creator.clone(), buyer.clone())
+}
+
+/// Shared peer-to-peer transfer event topics tuple.
+pub fn transfer_event_topics(creator: &Address, from: &Address) -> (Symbol, Address, Address) {
+    (TRANSFER_EVENT_NAME, creator.clone(), from.clone())
 }
 
 /// Shared buyback event topics tuple.
