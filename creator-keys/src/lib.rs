@@ -1557,6 +1557,15 @@ impl CreatorKeysContract {
         Ok(config.protocol_bps)
     }
 
+    /// Read-only view: returns the stored protocol fee basis points value.
+    ///
+    /// Does not mutate contract state. Fails with
+    /// [`ContractError::FeeConfigNotSet`] if no fee configuration has been stored.
+    pub fn get_protocol_fee_bps(env: Env) -> Result<u32, ContractError> {
+        let config = read_required_protocol_fee_config(&env)?;
+        Ok(config.protocol_bps)
+    }
+
     /// Sets the global protocol/creator fee split. Contract initialization
     /// entrypoint.
     ///
