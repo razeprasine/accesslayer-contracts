@@ -213,7 +213,7 @@ fn test_pause_blocks_registration_not_reads() {
     // Unpause — creator_b registration must now succeed
     client.unpause(&admin);
     assert!(!client.get_is_paused());
-    client
+    let _ = client
         .try_register_creator(
             &creator_b,
             &soroban_sdk::String::from_str(&env, "creatorb"),
