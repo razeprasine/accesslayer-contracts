@@ -1376,12 +1376,6 @@ fn test_register_event_fee_adjacent_fields_are_zero_and_ordered_after_identity_f
     );
 }
 
-/// Asserts that no events were emitted during the most recent contract call.
-///
-/// In the Soroban test environment, `env.events().all()` returns events from
-/// the most recent top-level invocation only. This helper confirms that the
-/// event log for the last call is empty, typically used to verify that failed
-/// transactions did not leave side-effect artifacts in the event stream.
 fn assert_no_events(env: &Env) {
     let all_events = env.events().all();
     assert_eq!(
