@@ -65,7 +65,10 @@ fn test_keys_transferred_event_from_field() {
     let (_, sender, _) = setup_transfer(&env, &client);
 
     let payload = last_event_data(&env);
-    assert_eq!(payload.from, sender, "from field must match the sender address");
+    assert_eq!(
+        payload.from, sender,
+        "from field must match the sender address"
+    );
 }
 
 #[test]
@@ -75,7 +78,10 @@ fn test_keys_transferred_event_to_field() {
     let (_, _, recipient) = setup_transfer(&env, &client);
 
     let payload = last_event_data(&env);
-    assert_eq!(payload.to, recipient, "to field must match the recipient address");
+    assert_eq!(
+        payload.to, recipient,
+        "to field must match the recipient address"
+    );
 }
 
 #[test]
