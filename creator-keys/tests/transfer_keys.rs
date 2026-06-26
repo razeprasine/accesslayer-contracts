@@ -262,6 +262,62 @@ fn test_transfer_keys_unregistered_creator_reverts() {
 }
 
 #[test]
+fn test_transfer_keys_self_transfer_sender_balance_unchanged() {
+    let env = test_env_with_auths();
+    let (client, _) = register_creator_keys(&env);
+
+    let _admin = set_pricing_and_fees(&env, &client, 100, 9000, 1000);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100, &None);
+    client.buy_key(&creator, &sender, &100, &None);
+
+    let balance_before = client.get_key_balance(&creator, &sender);
+    let result = client.try_transfer_keys(&creator, &sender, &sender, &1);
+    let balance_after = client.get_key_balance(&creator, &sender);
+
+    assert_eq!(
+        result,
+        Err(Ok(ContractError::SelfTransfer)),
+        "self-transfer must revert"
+    );
+    assert_eq!(
+        balance_before, balance_after,
+        "sender balance must be unchanged after self-transfer revert"
+    );
+}
+
+#[test]
+fn test_transfer_keys_self_transfer_total_supply_unchanged() {
+    let env = test_env_with_auths();
+    let (client, _) = register_creator_keys(&env);
+
+    let _admin = set_pricing_and_fees(&env, &client, 100, 9000, 1000);
+    let creator = Address::generate(&env);
+    let sender = Address::generate(&env);
+
+    client.register_creator(&creator, &String::from_str(&env, "alice"), &None, &None);
+    client.buy_key(&creator, &sender, &100, &None);
+    client.buy_key(&creator, &sender, &100, &None);
+
+    let supply_before = client.get_total_key_supply(&creator);
+    let result = client.try_transfer_keys(&creator, &sender, &sender, &1);
+    let supply_after = client.get_total_key_supply(&creator);
+
+    assert_eq!(
+        result,
+        Err(Ok(ContractError::SelfTransfer)),
+        "self-transfer must revert"
+    );
+    assert_eq!(
+        supply_before, supply_after,
+        "total supply must be unchanged after self-transfer revert"
+    );
+}
+
+#[test]
 fn test_transfer_keys_preserves_other_holders() {
     let env = test_env_with_auths();
     let (client, _) = register_creator_keys(&env);
