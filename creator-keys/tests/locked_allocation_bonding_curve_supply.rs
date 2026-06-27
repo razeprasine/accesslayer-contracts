@@ -50,12 +50,14 @@ fn setup(
             claimed: false,
         }),
         &None,
+        &None,
     );
 
     let creator_no_alloc = Address::generate(env);
     client.register_creator(
         &creator_no_alloc,
         &String::from_str(env, "bob"),
+        &None,
         &None,
         &None,
     );
