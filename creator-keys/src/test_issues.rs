@@ -13,10 +13,7 @@
 
 #[cfg(test)]
 mod issue_tests {
-    use soroban_sdk::{
-        testutils::Address as _,
-        token, Address, Env, String, Vec,
-    };
+    use soroban_sdk::{testutils::Address as _, token, Address, Env, String, Vec};
 
     use crate::{ContractError, CreatorKeysContract, CreatorKeysContractClient};
 
