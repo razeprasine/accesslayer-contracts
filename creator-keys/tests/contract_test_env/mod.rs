@@ -435,6 +435,27 @@ pub fn assert_claimable(
     );
 }
 
+/// Registers a creator with multiple holders at varied balances in one call.
+///
+/// For each `(holder, amount)` pair, buys `amount` keys from `holder`.
+/// The buy quote is fetched before each individual purchase so the helper
+/// works correctly under both flat and bonding-curve pricing models.
+/// Returns the total supply after all buys complete.
+pub fn setup_holders(
+    _env: &Env,
+    client: &CreatorKeysContractClient<'_>,
+    creator: &Address,
+    holders: &[(Address, u32)],
+) -> u32 {
+    for (holder, amount) in holders {
+        for _ in 0..*amount {
+            let quote = client.get_buy_quote(creator);
+            client.buy_key(creator, holder, &quote.total_amount, &None);
+        }
+    }
+    client.get_total_key_supply(creator)
+}
+
 /// Computes the expected claimable dividend for a holder given distribution parameters.
 ///
 /// Mirrors the contract's per-key accumulator model:
