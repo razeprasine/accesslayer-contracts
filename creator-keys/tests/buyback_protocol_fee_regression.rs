@@ -129,3 +129,31 @@ fn test_creator_fee_recipient_balance_unchanged_on_buyback() {
         "creator fee recipient balance must not change on buyback — creator fee is waived"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Treasury balance is unchanged when buyback reverts (zero amount)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_treasury_balance_unchanged_when_buyback_reverts() {
+    let env = test_env_with_auths();
+    let (client, _) = register_creator_keys(&env);
+    set_pricing_and_fees(&env, &client, KEY_PRICE, CREATOR_BPS, PROTOCOL_BPS);
+    let creator = register_test_creator(&env, &client, "alice");
+
+    // Buy one key so the creator has a position
+    let quote = client.get_buy_quote(&creator);
+    client.buy_key(&creator, &creator, &quote.total_amount, &None);
+
+    let treasury_before = client.get_protocol_recipient_balance();
+
+    // Buyback with zero amount reverts
+    let result = client.try_buyback(&creator, &creator, &0, &1, &None);
+    assert!(result.is_err(), "buyback with zero amount must revert");
+
+    let treasury_after = client.get_protocol_recipient_balance();
+    assert_eq!(
+        treasury_after, treasury_before,
+        "treasury must be unchanged after a reverted buyback"
+    );
+}
