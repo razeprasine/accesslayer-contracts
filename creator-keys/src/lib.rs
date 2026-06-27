@@ -1953,7 +1953,9 @@ impl CreatorKeysContract {
         creator: Address,
         amount: u32,
     ) -> Result<i128, ContractError> {
-        validate_buyback_amount(amount)?;
+        if amount == 0 {
+            return Ok(0);
+        }
 
         let Some(price) = resolve_quote_inputs(&env, &creator)? else {
             return Ok(0);
