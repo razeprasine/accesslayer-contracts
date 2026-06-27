@@ -509,6 +509,136 @@ fn test_update_creator_fee_recipient_unauthorized_reverts() {
     assert!(result.is_err());
 }
 
+#[test]
+fn test_update_creator_fee_recipient_reverts_when_current_recipient_is_not_authorized() {
+    let env = Env::default();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+    let creator = Address::generate(&env);
+    let current_recipient = Address::generate(&env);
+    let new_recipient = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+
+    let profile = CreatorProfile {
+        creator: creator.clone(),
+        handle: handle.clone(),
+        supply: 0,
+        holder_count: 0,
+        fee_recipient: current_recipient.clone(),
+        registered_at: 0,
+    };
+
+    env.as_contract(&contract_id, || {
+        env.storage()
+            .persistent()
+            .set(&constants::storage::creator(&creator), &profile);
+    });
+
+    let result = client.try_update_creator_fee_recipient(&creator, &new_recipient);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_sell_key_accepts_exact_min_proceeds_boundary() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+
+    client.set_key_price(&admin, &100);
+    client.set_fee_config(&admin, &9000, &1000);
+    client.register_creator(&creator, &handle, &None, &None, &None);
+
+    client.buy_key(&creator, &seller, &100, &None);
+    client.buy_key(&creator, &seller, &100, &None);
+
+    let quote = client.get_sell_quote(&creator, &seller).unwrap();
+    let exact_result = client.try_sell_key(&creator, &seller, &Some(quote.total_amount));
+    assert_eq!(exact_result, Ok(Ok(1)));
+
+    let second_quote = client.get_sell_quote(&creator, &seller).unwrap();
+    let slippage_result = client.try_sell_key(&creator, &seller, &Some(second_quote.total_amount + 1));
+    assert_eq!(slippage_result, Err(Ok(ContractError::SlippageExceeded)));
+}
+
+#[test]
+fn test_sell_extends_creator_ttl_after_successful_sell() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+
+    client.set_key_price(&admin, &100);
+    client.set_fee_config(&admin, &9000, &1000);
+    client.register_creator(&creator, &handle, &None, &None, &None);
+    client.buy_key(&creator, &seller, &100, &None);
+
+    let creator_key = constants::storage::creator(&creator);
+    let initial_profile: CreatorProfile = env.as_contract(&contract_id, || {
+        env.storage().persistent().get(&creator_key).unwrap()
+    });
+    assert_eq!(initial_profile.supply, 1);
+
+    let mut ledger_info = env.ledger().get();
+    ledger_info.sequence_number = 100;
+    env.ledger().set(ledger_info);
+
+    let result = client.try_sell_key(&creator, &seller, &Some(1));
+    assert_eq!(result, Ok(Ok(0)));
+
+    let mut ledger_info = env.ledger().get();
+    ledger_info.sequence_number = CREATOR_TTL_LEDGERS + 1;
+    env.ledger().set(ledger_info);
+
+    let has_profile = env.as_contract(&contract_id, || {
+        env.storage().persistent().has(&creator_key)
+    });
+    assert!(has_profile);
+}
+
+#[test]
+fn test_failed_sell_does_not_extend_creator_ttl() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let handle = String::from_str(&env, "alice");
+
+    client.set_key_price(&admin, &100);
+    client.register_creator(&creator, &handle, &None, &None, &None);
+
+    let creator_key = constants::storage::creator(&creator);
+    let mut ledger_info = env.ledger().get();
+    ledger_info.sequence_number = 100;
+    env.ledger().set(ledger_info);
+
+    let result = client.try_sell_key(&creator, &seller, &Some(1));
+    assert_eq!(result, Err(Ok(ContractError::InsufficientBalance)));
+
+    let mut ledger_info = env.ledger().get();
+    ledger_info.sequence_number = CREATOR_TTL_LEDGERS + 1;
+    env.ledger().set(ledger_info);
+
+    let has_profile = env.as_contract(&contract_id, || {
+        env.storage().persistent().has(&creator_key)
+    });
+    assert!(!has_profile);
+}
+
 // --- TTL extension tests (#396) ---
 
 #[test]
