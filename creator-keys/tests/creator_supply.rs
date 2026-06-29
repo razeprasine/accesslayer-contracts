@@ -57,3 +57,23 @@ fn test_get_creator_supply_fails_for_unregistered_creator() {
     let result = client.try_get_creator_supply(&creator);
     assert_eq!(result, Err(Ok(ContractError::NotRegistered)));
 }
+
+#[test]
+fn test_creator_supply_accumulates_across_sequential_buys() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, _admin, creator) = setup(&env);
+    let buyer = Address::generate(&env);
+
+    client.buy_key(&creator, &buyer, &100_i128, &None);
+    assert_eq!(client.get_creator_supply(&creator), 1);
+
+    client.buy_key(&creator, &buyer, &100_i128, &None);
+    assert_eq!(client.get_creator_supply(&creator), 2);
+
+    client.buy_key(&creator, &buyer, &100_i128, &None);
+    assert_eq!(client.get_creator_supply(&creator), 3);
+
+    assert_eq!(client.get_creator_supply(&creator), 1 + 1 + 1);
+}
