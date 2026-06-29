@@ -20,7 +20,13 @@ fn creator_can_create_poll_and_view_empty_result() {
     let client = CreatorKeysContractClient::new(&env, &contract_id);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let question = String::from_str(&env, "Should we launch premium content?");
     let options = poll_options(&env);
@@ -47,11 +53,17 @@ fn holder_vote_uses_liquid_key_balance_as_weight() {
     client.set_key_price(&admin, &100);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let holder = Address::generate(&env);
-    client.buy_key(&creator, &holder, &100);
-    client.buy_key(&creator, &holder, &100);
+    client.buy_key(&creator, &holder, &100, &None);
+    client.buy_key(&creator, &holder, &100, &None);
 
     let poll_id = client.create_poll(
         &creator,
@@ -78,12 +90,18 @@ fn changing_vote_before_expiry_updates_tally() {
     client.set_key_price(&admin, &100);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let holder = Address::generate(&env);
-    client.buy_key(&creator, &holder, &100);
-    client.buy_key(&creator, &holder, &100);
-    client.buy_key(&creator, &holder, &100);
+    client.buy_key(&creator, &holder, &100, &None);
+    client.buy_key(&creator, &holder, &100, &None);
+    client.buy_key(&creator, &holder, &100, &None);
 
     let poll_id = client.create_poll(
         &creator,
@@ -112,10 +130,16 @@ fn vote_after_expiry_reverts_with_poll_expired() {
     client.set_key_price(&admin, &100);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let holder = Address::generate(&env);
-    client.buy_key(&creator, &holder, &100);
+    client.buy_key(&creator, &holder, &100, &None);
 
     let poll_id = client.create_poll(
         &creator,
@@ -143,7 +167,13 @@ fn non_holder_vote_reverts_with_not_a_holder() {
     let client = CreatorKeysContractClient::new(&env, &contract_id);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let non_holder = Address::generate(&env);
     let poll_id = client.create_poll(
@@ -168,10 +198,16 @@ fn invalid_vote_option_reverts() {
     client.set_key_price(&admin, &100);
 
     let creator = Address::generate(&env);
-    client.register_creator(&creator, &String::from_str(&env, "alice"));
+    client.register_creator(
+        &creator,
+        &String::from_str(&env, "alice"),
+        &None,
+        &None,
+        &None,
+    );
 
     let holder = Address::generate(&env);
-    client.buy_key(&creator, &holder, &100);
+    client.buy_key(&creator, &holder, &100, &None);
 
     let poll_id = client.create_poll(
         &creator,
